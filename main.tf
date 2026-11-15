@@ -124,6 +124,15 @@ resource "aws_iam_policy" "saga_messaging" {
         Resource = "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:${var.messaging_prefix}-*"
       },
       {
+        # E-mail ao cliente pelo SES (os-service, notification-channel=ses). O SES autoriza o
+        # envio contra a identidade do REMETENTE; em sandbox também contra a do destinatário.
+        # Restrito às identidades desta conta e região.
+        Sid      = "SendCustomerEmailViaSes"
+        Effect   = "Allow"
+        Action   = ["ses:SendEmail"]
+        Resource = "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/*"
+      },
+      {
         # Os tópicos SNS são cifrados com a chave KMS do workbench-messaging: publicar
         # exige usar a chave, e só através do SNS desta região.
         Sid      = "UseMessagingKeyViaSns"
