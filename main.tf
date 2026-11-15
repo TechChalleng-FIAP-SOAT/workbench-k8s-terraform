@@ -123,6 +123,17 @@ resource "aws_iam_policy" "saga_messaging" {
         ]
         Resource = "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:${var.messaging_prefix}-*"
       },
+      {
+        # Os tópicos SNS são cifrados com a chave KMS do workbench-messaging: publicar
+        # exige usar a chave, e só através do SNS desta região.
+        Sid      = "UseMessagingKeyViaSns"
+        Effect   = "Allow"
+        Action   = ["kms:GenerateDataKey", "kms:Decrypt"]
+        Resource = "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*"
+        Condition = {
+          StringEquals = { "kms:ViaService" = "sns.${var.aws_region}.amazonaws.com" }
+        }
+      },
     ]
   })
 
