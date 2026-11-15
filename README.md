@@ -31,7 +31,8 @@ One environment per branch:
 ## Configuration
 Shared AWS auth/account/state-bucket come from **org-level secrets**, suffixed by
 branch (`*_MAIN` / `*_DEVELOP`); `AWS_REGION` is a single org-level secret shared by
-both branches (no suffix). See the app repo's `DEPENDENCIES.md` §5 for the full matrix.
+both branches (no suffix). The full secret matrix and the platform bring-up order are in
+the workspace deploy guide (`DEPLOY-AWS-GUIA.md`, phases 1–2).
 
 ## Local use
 ```bash
