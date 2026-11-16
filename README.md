@@ -32,7 +32,7 @@ One environment per branch:
 Shared AWS auth/account/state-bucket come from **org-level secrets**, suffixed by
 branch (`*_MAIN` / `*_DEVELOP`); `AWS_REGION` is a single org-level secret shared by
 both branches (no suffix). The full secret matrix and the platform bring-up order are in
-the workspace deploy guide (`DEPLOY-AWS-GUIA.md`, phases 1–2).
+the deploy guide (`workbench-technical-documentation/09 - Operacao/Deploy na AWS.md`, phases 1–2).
 
 ## Local use
 ```bash
@@ -40,4 +40,16 @@ cp terraform.tfvars.example terraform.tfvars   # edit values
 terraform init -backend=false                  # validation only (no remote state)
 terraform validate
 ```
-Real applies run in CI (`.github/workflows/cd.yml`) on pushes to `develop`/`main`.
+## Deploy rules
+
+Real applies run in CI (`.github/workflows/cd.yml`). An apply creates the VPC, NAT Gateway and
+EKS cluster, which are billed by the hour, so it is guarded:
+
+- **`main` only accepts changes through a pull request**, for everyone including admins
+  (`enforce_admins`): 1 approval and a passing `fmt + validate` check are required. A direct push is rejected.
+- A merge triggers the apply, **except** when the change only touches `*.md`, `*.example` or
+  `ci.yml` — documentation never creates infrastructure.
+- To apply without a code change, run the **CD** workflow manually (Actions → CD → Run workflow)
+  and type `apply` in the confirmation field. Any other value skips the job.
+- To tear everything down, see the *Desligar* section of the deploy guide
+  (`workbench-technical-documentation/09 - Operacao/Deploy na AWS.md`).

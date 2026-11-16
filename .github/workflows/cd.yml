@@ -1,8 +1,22 @@
 name: CD
 
 on:
+  # O apply cria a VPC, o NAT e o EKS (cobra por hora). Por isso:
+  #  - só roda depois de um merge via PR (a proteção da branch exige PR e vale para admins);
+  #  - mudança que não altera a infra (documentação, exemplos) NÃO dispara o apply;
+  #  - o disparo manual exige digitar "apply".
   push:
     branches: [develop, main]
+    paths-ignore:
+      - "**/*.md"
+      - "**/*.example"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Digite "apply" para criar/atualizar a VPC e o EKS na branch selecionada (gera custo).'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,6 +26,8 @@ jobs:
   deploy:
     name: Provision VPC + EKS
     runs-on: ubuntu-latest
+    # Disparo manual sem a confirmação não cria nada.
+    if: github.event_name == 'push' || inputs.confirm == 'apply'
     environment: ${{ github.ref_name }}
     concurrency:
       group: k8s-terraform-${{ github.ref_name }}

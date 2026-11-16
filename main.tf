@@ -80,8 +80,76 @@ module "eks" {
       max_size       = var.node_max_size
       desired_size   = max(var.node_desired_size, var.node_min_size)
       subnet_ids     = module.vpc.private_subnets
+
+      # Os pods usam a role do nó (cadeia padrão do AWS SDK) para a mensageria da Saga.
+      iam_role_additional_policies = {
+        saga_messaging = aws_iam_policy.saga_messaging.arn
+      }
     }
   }
+
+  tags = local.tags
+}
+
+# -----------------------------------------------------------------------------
+# Mensageria da Saga: os microsserviços publicam no SNS e leem do SQS criados pelo
+# workbench-messaging. Sem esta permissão, a Saga não anda na AWS. Restrita aos recursos
+# com o prefixo da mensageria (workbench-*), nesta conta e região.
+# -----------------------------------------------------------------------------
+data "aws_caller_identity" "current" {}
+
+resource "aws_iam_policy" "saga_messaging" {
+  name        = "${local.cluster_name}-saga-messaging"
+  description = "SNS publish e SQS consume para a Saga dos microsserviços (${local.cluster_name})."
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "PublishSagaTopics"
+        Effect   = "Allow"
+        Action   = ["sns:Publish"]
+        Resource = "arn:aws:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:${var.messaging_prefix}-*"
+      },
+      {
+        Sid    = "ConsumeSagaQueues"
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:ChangeMessageVisibility",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl",
+        ]
+        Resource = "arn:aws:sqs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:${var.messaging_prefix}-*"
+      },
+      {
+        # E-mail ao cliente pelo SES (os-service, notification-channel=ses). O SES autoriza o
+        # envio contra a identidade do REMETENTE; em sandbox também contra a do destinatário.
+        # Restrito às identidades desta conta e região.
+        Sid    = "SendCustomerEmailViaSes"
+        Effect = "Allow"
+        Action = ["ses:SendEmail"]
+        # O envio pelo configuration set (bounces e reclamações → alertas) também exige a
+        # permissão no ARN do configuration set; sem ele, todo envio daria AccessDenied.
+        Resource = [
+          "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/*",
+          "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:configuration-set/*",
+        ]
+      },
+      {
+        # Os tópicos SNS são cifrados com a chave KMS do workbench-messaging: publicar
+        # exige usar a chave, e só através do SNS desta região.
+        Sid      = "UseMessagingKeyViaSns"
+        Effect   = "Allow"
+        Action   = ["kms:GenerateDataKey", "kms:Decrypt"]
+        Resource = "arn:aws:kms:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key/*"
+        Condition = {
+          StringEquals = { "kms:ViaService" = "sns.${var.aws_region}.amazonaws.com" }
+        }
+      },
+    ]
+  })
 
   tags = local.tags
 }

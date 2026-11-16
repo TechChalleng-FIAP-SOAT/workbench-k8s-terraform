@@ -110,3 +110,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "messaging_prefix" {
+  description = "Prefixo dos tópicos SNS e filas SQS do workbench-messaging (name_prefix de lá); a permissão dos nós vale só para eles."
+  type        = string
+  default     = "workbench"
+}
