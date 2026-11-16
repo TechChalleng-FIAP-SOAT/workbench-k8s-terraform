@@ -127,10 +127,15 @@ resource "aws_iam_policy" "saga_messaging" {
         # E-mail ao cliente pelo SES (os-service, notification-channel=ses). O SES autoriza o
         # envio contra a identidade do REMETENTE; em sandbox também contra a do destinatário.
         # Restrito às identidades desta conta e região.
-        Sid      = "SendCustomerEmailViaSes"
-        Effect   = "Allow"
-        Action   = ["ses:SendEmail"]
-        Resource = "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/*"
+        Sid    = "SendCustomerEmailViaSes"
+        Effect = "Allow"
+        Action = ["ses:SendEmail"]
+        # O envio pelo configuration set (bounces e reclamações → alertas) também exige a
+        # permissão no ARN do configuration set; sem ele, todo envio daria AccessDenied.
+        Resource = [
+          "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/*",
+          "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:configuration-set/*",
+        ]
       },
       {
         # Os tópicos SNS são cifrados com a chave KMS do workbench-messaging: publicar
