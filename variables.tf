@@ -34,9 +34,12 @@ variable "cluster_version" {
 }
 
 variable "node_instance_type" {
+  # t3.medium (2 vCPU, 4 GiB): com t3.small (~1,4 GiB alocável por nó) o cluster ficava sem espaço
+  # para o rolling update dos 4 serviços e para o agente do Datadog (~1 GiB no total); o pod novo
+  # ficava Pending (Insufficient memory). Trocar o tipo SUBSTITUI os nós (create_before_destroy).
   description = "EC2 instance type for the managed node group."
   type        = string
-  default     = "t3.small"
+  default     = "t3.medium"
 }
 
 variable "node_ami_type" {
