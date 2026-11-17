@@ -34,12 +34,18 @@ variable "cluster_version" {
 }
 
 variable "node_instance_type" {
-  # t3.medium (2 vCPU, 4 GiB): com t3.small (~1,4 GiB alocável por nó) o cluster ficava sem espaço
+  # c7i-flex.large (2 vCPU, 4 GiB): com t3.small (~1,4 GiB alocável por nó) o cluster ficava sem espaço
   # para o rolling update dos 4 serviços e para o agente do Datadog (~1 GiB no total); o pod novo
   # ficava Pending (Insufficient memory). Trocar o tipo SUBSTITUI os nós (create_before_destroy).
+  #
+  # ATENÇÃO (plano FREE da AWS): a conta só pode lançar tipos "free-tier-eligible". t3.medium NÃO é
+  # elegível: o terraform plan e o ec2 --dry-run PASSAM, mas o RunInstances real é recusado
+  # ("The specified instance type is not eligible for Free Tier") e o grupo de nós fica CREATING
+  # sem instâncias. Antes de trocar o tipo, prove com um lançamento real (e termine em seguida).
+  # Elegíveis com memória suficiente: c7i-flex.large (4 GiB) e m7i-flex.large (8 GiB).
   description = "EC2 instance type for the managed node group."
   type        = string
-  default     = "t3.medium"
+  default     = "c7i-flex.large"
 }
 
 variable "node_ami_type" {
